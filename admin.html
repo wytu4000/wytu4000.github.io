@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Admin — 新買醉</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f4efe6;--paper-2:#ece6da;--paper-3:#e3dcd0;
+  --ink:#18120d;--ink-2:#3c342c;--ink-3:#8a7d72;
+  --red:#b82c1f;--green:#1e6b3a;--rule:#d5cdc0;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+html{background:var(--ink)}
+body{background:var(--paper);font-family:'Noto Sans TC',sans-serif;min-height:100dvh;-webkit-tap-highlight-color:transparent}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+
+/* ── PIN 登入畫面 ── */
+.login-screen{position:fixed;inset:0;z-index:500;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.login-screen.hidden{display:none}
+.login-card{width:100%;max-width:320px;background:#fff;border:2px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:5px 5px 0 var(--ink)}
+.lc-head{background:var(--ink);padding:24px;text-align:center}
+.lc-title{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;color:#fff;letter-spacing:4px}
+.lc-sub{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:3px;margin-top:4px}
+.lc-body{padding:24px}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:20px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--rule);background:transparent;transition:all 0.15s}
+.pin-dot.filled{background:var(--ink);border-color:var(--ink)}
+.pin-dot.error{background:var(--red);border-color:var(--red)}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.nk{padding:15px 4px;border:1.5px solid var(--rule);background:var(--paper-2);font-family:'Space Mono',monospace;font-size:19px;font-weight:700;color:var(--ink);border-radius:8px;cursor:pointer;text-align:center;touch-action:manipulation;transition:all 0.12s;user-select:none}
+.nk:active{background:var(--ink);color:#fff;transform:scale(0.94)}
+.nk.del{color:var(--red)}
+.nk.del:active{background:var(--red);color:#fff}
+.nk.zero{grid-column:2}
+.pin-err{text-align:center;margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--red);letter-spacing:1px;min-height:18px}
+.back-link{text-align:center;margin-top:16px;font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-3);letter-spacing:1px;cursor:pointer;touch-action:manipulation}
+
+/* ── Admin 主介面 ── */
+.admin-wrap{position:relative;z-index:1;display:none;flex-direction:column;min-height:100dvh}
+.admin-wrap.show{display:flex}
+.admin-head{background:var(--ink);padding:calc(var(--safe-t)+14px) 20px 14px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.admin-back{width:36px;height:36px;border-radius:8px;border:1.5px solid rgba(255,255,255,0.2);background:transparent;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;flex-shrink:0}
+.admin-title{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;color:#fff;letter-spacing:4px;flex:1}
+.admin-badge{background:var(--red);color:#fff;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:1px}
+/* 分頁 */
+.admin-tabs{display:flex;background:var(--paper-2);border-bottom:2px solid var(--ink);flex-shrink:0;overflow-x:auto}
+.atab{flex:1;min-width:80px;padding:13px 8px;text-align:center;font-family:'Noto Serif TC',serif;font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:1px;cursor:pointer;border-bottom:3px solid transparent;transition:all 0.2s;touch-action:manipulation;white-space:nowrap}
+.atab.active{color:var(--ink);border-bottom-color:var(--red);background:var(--paper)}
+.atab+.atab{border-left:1px solid var(--rule)}
+/* 內容 */
+.admin-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 20px 40px}
+.section-title{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--rule)}
+/* 員工管理 */
+.staff-card{background:#fff;border:1.5px solid var(--rule);border-radius:10px;margin-bottom:10px;overflow:hidden;display:flex;align-items:stretch}
+.staff-info{flex:1;padding:14px 16px}
+.staff-name{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--ink)}
+.staff-meta{font-family:'Space Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:4px;letter-spacing:1px}
+.staff-status{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-top:6px}
+.staff-status.active{background:#e8f5ed;color:var(--green)}
+.staff-status.disabled{background:#fde8e6;color:var(--red)}
+.staff-actions{display:flex;flex-direction:column;border-left:1px solid var(--rule)}
+.staff-act-btn{flex:1;padding:0 16px;font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:700;color:var(--ink-3);background:transparent;border:none;cursor:pointer;touch-action:manipulation;border-bottom:1px solid var(--rule);white-space:nowrap}
+.staff-act-btn:last-child{border-bottom:none}
+.staff-act-btn:active{background:var(--paper-2)}
+.staff-act-btn.del{color:var(--red)}
+/* 新增員工表單 */
+.add-form{background:#fff;border:1.5px solid var(--ink);border-radius:10px;padding:16px;margin-bottom:20px}
+.add-form-title{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:var(--ink);letter-spacing:2px;margin-bottom:14px}
+.form-row{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.form-label{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:2px}
+.form-input{width:100%;padding:12px 14px;border:1.5px solid var(--rule);border-radius:8px;background:var(--paper-2);font-family:'Noto Sans TC',sans-serif;font-size:16px;color:var(--ink);outline:none;-webkit-appearance:none}
+.form-input:focus{border-color:var(--ink)}
+.form-input::placeholder{color:var(--rule)}
+.btn-add{width:100%;padding:14px;background:var(--ink);border:none;border-radius:8px;font-family:'Noto Serif TC',serif;font-size:16px;font-weight:900;color:#fff;letter-spacing:4px;cursor:pointer;touch-action:manipulation;transition:all 0.15s}
+.btn-add:active{background:var(--red);transform:scale(0.98)}
+/* 回報審核卡片 */
+.rec-card{background:#fff;border:1.5px solid var(--rule);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.rec-head{padding:10px 14px;background:var(--paper-2);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule)}
+.rec-type{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:2px;padding:3px 8px;border-radius:4px;color:#fff}
+.rec-type.discount{background:var(--ink-2)}
+.rec-type.waste{background:#7a3500}
+.rec-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--ink-3)}
+.rec-body{padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+.rec-row{display:flex;gap:8px;align-items:baseline}
+.rec-k{font-family:'Space Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:1px;width:52px;flex-shrink:0}
+.rec-v{font-family:'Noto Sans TC',sans-serif;font-size:14px;color:var(--ink-2);font-weight:500}
+.rec-v.big{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--red)}
+.rec-foot{padding:10px 14px;border-top:1px solid var(--rule);display:flex;gap:8px}
+.btn-confirm{flex:1;padding:12px;background:var(--ink);border:none;border-radius:6px;font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:#fff;letter-spacing:3px;cursor:pointer;touch-action:manipulation;transition:all 0.15s}
+.btn-confirm:active{background:var(--green);transform:scale(0.98)}
+.btn-reject{padding:12px 14px;border:1.5px solid var(--rule);background:transparent;border-radius:6px;font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--ink-3);cursor:pointer;touch-action:manipulation}
+.btn-reject:active{background:var(--red);color:#fff;border-color:var(--red)}
+.rec-done{text-align:center;padding:12px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px}
+.rec-done.confirmed{color:var(--green)}
+.rec-done.rejected{color:var(--red)}
+.empty{text-align:center;padding:48px 20px;font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-3);letter-spacing:2px;line-height:2}
+/* toast */
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.85);background:var(--ink);color:#fff;padding:20px 30px;border-radius:12px;font-family:'Noto Serif TC',serif;font-size:16px;font-weight:900;letter-spacing:4px;text-align:center;z-index:999;opacity:0;pointer-events:none;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);min-width:180px}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.spinner-small{display:inline-block;width:14px;height:14px;border:2px solid var(--rule);border-top-color:var(--ink);border-radius:50%;animation:spin 0.7s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── PIN 登入 ── -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="lc-head">
+      <div class="lc-title">管理員入口</div>
+      <div class="lc-sub">ADMIN ACCESS · 6-DIGIT PIN</div>
+    </div>
+    <div class="lc-body">
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="numpad">
+        <button class="nk" data-k="1">1</button><button class="nk" data-k="2">2</button><button class="nk" data-k="3">3</button>
+        <button class="nk" data-k="4">4</button><button class="nk" data-k="5">5</button><button class="nk" data-k="6">6</button>
+        <button class="nk" data-k="7">7</button><button class="nk" data-k="8">8</button><button class="nk" data-k="9">9</button>
+        <button class="nk zero" data-k="0">0</button><button class="nk del" data-k="del">⌫</button>
+      </div>
+      <div class="pin-err" id="pin-err"></div>
+    </div>
+  </div>
+  <div class="back-link" onclick="location.href='index.html'">← 返回員工登入</div>
+</div>
+
+<!-- ── Admin 主介面 ── -->
+<div class="admin-wrap" id="admin-wrap">
+  <div class="admin-head">
+    <button class="admin-back" id="admin-back">←</button>
+    <div class="admin-title">管理後台</div>
+    <div class="admin-badge" id="pending-badge">0</div>
+  </div>
+  <div class="admin-tabs">
+    <div class="atab active" data-at="staff">員工管理</div>
+    <div class="atab" data-at="pending">待確認</div>
+    <div class="atab" data-at="done">已處理</div>
+  </div>
+  <div class="admin-content" id="admin-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL='https://script.google.com/macros/s/AKfycbykRLffbcem_xIgJMw2RUPu99DPeZ76ZLlza66kajhL2YXCVqXPCHTQJ08Ki6D43ekVYg/exec';
+const ADMIN_PIN_LENGTH=6;
+let pinBuf='';
+let curTab='staff';
+let allRecords=[];
+let staffList=[];
+
+// ── PIN ──
+document.querySelectorAll('.nk').forEach(k=>{
+  k.addEventListener('click',()=>{
+    const v=k.dataset.k;
+    if(v==='del'){pinBuf=pinBuf.slice(0,-1);renderDots();return}
+    if(pinBuf.length>=ADMIN_PIN_LENGTH)return;
+    pinBuf+=v;renderDots();
+    if(pinBuf.length===ADMIN_PIN_LENGTH)verifyAdmin();
+  });
+});
+function renderDots(){
+  document.querySelectorAll('#pin-dots .pin-dot').forEach((d,i)=>{
+    d.classList.remove('error');d.classList.toggle('filled',i<pinBuf.length);
+  });
+  document.getElementById('pin-err').textContent='';
+}
+async function verifyAdmin(){
+  try{
+    const res=await fetch(`${GAS_URL}?action=adminLogin&pin=${pinBuf}`);
+    const data=await res.json();
+    if(data.ok){
+      sessionStorage.setItem('admin_auth','1');
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('admin-wrap').classList.add('show');
+      loadAll();
+    }else{
+      pinBuf='';
+      document.querySelectorAll('#pin-dots .pin-dot').forEach(d=>{d.classList.remove('filled');d.classList.add('error')});
+      document.getElementById('pin-err').textContent=data.msg||'PIN 碼錯誤';
+      setTimeout(()=>document.querySelectorAll('#pin-dots .pin-dot').forEach(d=>d.classList.remove('error')),800);
+    }
+  }catch(e){
+    pinBuf='';document.getElementById('pin-err').textContent='連線失敗';
+  }
+}
+
+// 已登入
+if(sessionStorage.getItem('admin_auth')){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('admin-wrap').classList.add('show');
+  loadAll();
+}
+
+// ── 返回 ──
+document.getElementById('admin-back').addEventListener('click',()=>{
+  sessionStorage.removeItem('admin_auth');
+  location.href='index.html';
+});
+
+// ── 分頁切換 ──
+document.querySelectorAll('.atab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    curTab=t.dataset.at;
+    document.querySelectorAll('.atab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    renderTab();
+  });
+});
+
+async function loadAll(){
+  document.getElementById('admin-content').innerHTML=`<div class="empty"><span class="spinner-small"></span>載入中…</div>`;
+  try{
+    const [rStaff,rRec]=await Promise.all([
+      fetch(`${GAS_URL}?action=getStaffAdmin`).then(r=>r.json()),
+      fetch(`${GAS_URL}?action=getRecords`).then(r=>r.json())
+    ]);
+    staffList=rStaff.list||[];
+    allRecords=rRec.list||[];
+  }catch(e){staffList=[];allRecords=[];}
+  updateBadge();
+  renderTab();
+}
+
+function updateBadge(){
+  const n=allRecords.filter(r=>r.狀態==='待確認').length;
+  document.getElementById('pending-badge').textContent=n;
+}
+
+function renderTab(){
+  const c=document.getElementById('admin-content');
+  if(curTab==='staff') renderStaffTab(c);
+  else if(curTab==='pending') renderRecords(c,'待確認');
+  else renderRecords(c,'done');
+}
+
+// ── 員工管理 ──
+function renderStaffTab(c){
+  const addForm=`
+    <div class="add-form">
+      <div class="add-form-title">新增員工</div>
+      <div class="form-row"><div class="form-label">姓名</div><input class="form-input" id="new-name" placeholder="員工姓名" maxlength="10"></div>
+      <div class="form-row"><div class="form-label">PIN 碼（4位數）</div><input class="form-input" id="new-pin" placeholder="0000" inputmode="numeric" maxlength="4"></div>
+      <button class="btn-add" id="btn-add-staff">新　增</button>
+    </div>
+    <div class="section-title">現有員工 (${staffList.length})</div>
+  `;
+  const cards=staffList.map(s=>`
+    <div class="staff-card">
+      <div class="staff-info">
+        <div class="staff-name">${s.name}</div>
+        <div class="staff-meta">PIN: ${'●'.repeat(4)} · ID: ${s.id||'-'}</div>
+        <div class="staff-status ${s.status==='啟用'?'active':'disabled'}">${s.status||'啟用'}</div>
+      </div>
+      <div class="staff-actions">
+        <button class="staff-act-btn" data-id="${s.id}" data-action="toggle">${s.status==='停用'?'啟用':'停用'}</button>
+        <button class="staff-act-btn" data-id="${s.id}" data-action="resetpin">重設PIN</button>
+        <button class="staff-act-btn del" data-id="${s.id}" data-action="delete">刪除</button>
+      </div>
+    </div>
+  `).join('');
+  c.innerHTML=addForm+cards;
+
+  document.getElementById('btn-add-staff').addEventListener('click',async()=>{
+    const name=document.getElementById('new-name').value.trim();
+    const pin=document.getElementById('new-pin').value.trim();
+    if(!name||!pin||pin.length!==4||isNaN(pin)){showToast('請填寫姓名與4位PIN');return}
+    try{
+      const r=await fetch(`${GAS_URL}?action=addStaff&name=${encodeURIComponent(name)}&pin=${pin}`).then(x=>x.json());
+      if(r.ok){showToast('✓ 新增成功','success');await loadAll();}
+      else showToast(r.msg||'新增失敗');
+    }catch(e){showToast('連線失敗');}
+  });
+
+  c.querySelectorAll('.staff-act-btn').forEach(b=>{
+    b.addEventListener('click',async()=>{
+      const id=b.dataset.id;const act=b.dataset.action;
+      if(act==='delete'&&!confirm('確定刪除此員工？'))return;
+      let newPin='';
+      if(act==='resetpin'){
+        newPin=prompt('輸入新 PIN（4位數）');
+        if(!newPin||newPin.length!==4||isNaN(newPin)){alert('PIN 格式錯誤');return}
+      }
+      try{
+        const url=`${GAS_URL}?action=staffAction&id=${id}&act=${act}${newPin?'&newPin='+newPin:''}`;
+        const r=await fetch(url).then(x=>x.json());
+        if(r.ok){showToast('✓ 已更新','success');await loadAll();}
+        else showToast(r.msg||'操作失敗');
+      }catch(e){showToast('連線失敗');}
+    });
+  });
+}
+
+// ── 回報審核 ──
+function renderRecords(c, filter){
+  const list=filter==='待確認'
+    ?allRecords.filter(r=>r.狀態==='待確認')
+    :allRecords.filter(r=>r.狀態!=='待確認');
+  if(!list.length){c.innerHTML=`<div class="empty">— 目前無${filter==='待確認'?'待確認':'已處理'}回報 —</div>`;return}
+  c.innerHTML=list.map(r=>{
+    const isDsc=r.類型==='優惠折扣';
+    const body=isDsc
+      ?`<div class="rec-row"><div class="rec-k">金額</div><div class="rec-v big">NT$${Number(r.金額||0).toLocaleString()}</div></div>
+         <div class="rec-row"><div class="rec-k">項目</div><div class="rec-v">${r.項目||''}</div></div>
+         <div class="rec-row"><div class="rec-k">人員</div><div class="rec-v">${r.操作人員||''}</div></div>
+         ${r.備註?`<div class="rec-row"><div class="rec-k">備註</div><div class="rec-v">${r.備註}</div></div>`:''}`
+      :`<div class="rec-row"><div class="rec-k">品項</div><div class="rec-v">${r.品項||''}</div></div>
+        <div class="rec-row"><div class="rec-k">數量</div><div class="rec-v big">${r.數量||1}<small style="font-size:14px;color:var(--ink-3)">${r.單位||''}</small></div></div>
+        <div class="rec-row"><div class="rec-k">人員</div><div class="rec-v">${r.操作人員||''}</div></div>
+        <div class="rec-row"><div class="rec-k">原因</div><div class="rec-v">${r.備註||''}</div></div>`;
+    const foot=r.狀態==='待確認'
+      ?`<div class="rec-foot">
+          <button class="btn-confirm" data-id="${r.id}" data-sheet="${isDsc?'優惠折扣':'耗損回報'}">✓ 確　認</button>
+          <button class="btn-reject" data-id="${r.id}" data-sheet="${isDsc?'優惠折扣':'耗損回報'}">駁回</button>
+        </div>`
+      :`<div class="rec-done ${r.狀態==='已確認'?'confirmed':'rejected'}">${r.狀態==='已確認'?'✓ 已確認':'✕ 已駁回'}</div>`;
+    return `<div class="rec-card">
+      <div class="rec-head">
+        <span class="rec-type ${isDsc?'discount':'waste'}">${r.類型||''}</span>
+        <span class="rec-time">${r.日期||''} ${r.時間||''}</span>
+      </div>
+      <div class="rec-body">${body}</div>${foot}</div>`;
+  }).join('');
+
+  c.querySelectorAll('.btn-confirm').forEach(b=>{
+    b.addEventListener('click',()=>updateStatus(b.dataset.id,b.dataset.sheet,'已確認'));
+  });
+  c.querySelectorAll('.btn-reject').forEach(b=>{
+    b.addEventListener('click',()=>updateStatus(b.dataset.id,b.dataset.sheet,'已駁回'));
+  });
+}
+
+async function updateStatus(id,sheet,status){
+  try{
+    const r=await fetch(`${GAS_URL}?action=updateStatus&id=${id}&sheet=${encodeURIComponent(sheet)}&status=${encodeURIComponent(status)}`).then(x=>x.json());
+    if(r.ok){
+      allRecords=allRecords.map(rec=>String(rec.id)===String(id)?{...rec,狀態:status}:rec);
+      updateBadge();renderTab();showToast(status==='已確認'?'✓ 已確認':'已駁回',status==='已確認'?'success':'');
+    }
+  }catch(e){showToast('連線失敗');}
+}
+
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=`toast ${type} show`;
+  setTimeout(()=>t.className=`toast ${type}`,2000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>新買醉 — 登入</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f4efe6;--paper-2:#ece6da;--ink:#18120d;--ink-2:#3c342c;--ink-3:#8a7d72;
+  --red:#b82c1f;--rule:#d5cdc0;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+html{background:var(--ink);height:100%}
+body{
+  background:var(--paper);min-height:100dvh;
+  font-family:'Noto Serif TC',serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:calc(var(--safe-t)+20px) 24px calc(var(--safe-b)+20px);
+  -webkit-tap-highlight-color:transparent;
+  position:relative;overflow:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;
+}
+.card{
+  position:relative;z-index:1;
+  width:100%;max-width:340px;
+  background:#fff;
+  border:2px solid var(--ink);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:6px 6px 0 var(--ink);
+}
+.card-head{
+  background:var(--ink);padding:28px 24px 22px;
+  text-align:center;
+}
+.brand{font-size:28px;font-weight:900;color:#fff;letter-spacing:4px;}
+.brand-sub{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:3px;margin-top:4px;}
+.card-body{padding:28px 24px;}
+.login-title{
+  font-size:13px;font-weight:700;color:var(--ink-3);
+  letter-spacing:3px;text-align:center;margin-bottom:20px;
+  font-family:'Space Mono',monospace;
+}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:24px;}
+.pin-dot{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--rule);background:transparent;
+  transition:all 0.15s;
+}
+.pin-dot.filled{background:var(--ink);border-color:var(--ink);}
+.pin-dot.error{background:var(--red);border-color:var(--red);}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.nk{
+  padding:16px 4px;
+  border:1.5px solid var(--rule);background:var(--paper-2);
+  font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--ink);
+  border-radius:8px;cursor:pointer;text-align:center;
+  touch-action:manipulation;transition:all 0.12s;
+  user-select:none;-webkit-user-select:none;
+}
+.nk:active{background:var(--ink);color:#fff;transform:scale(0.94);}
+.nk.del{font-size:18px;color:var(--red);}
+.nk.del:active{background:var(--red);color:#fff;}
+.nk.zero{grid-column:2;}
+.err-msg{
+  text-align:center;margin-top:14px;
+  font-family:'Space Mono',monospace;font-size:11px;
+  color:var(--red);letter-spacing:1px;
+  min-height:18px;
+}
+.card-foot{
+  border-top:1px solid var(--rule);padding:14px 24px;
+  text-align:center;
+}
+.admin-link{
+  font-family:'Space Mono',monospace;font-size:10px;
+  color:var(--rule);letter-spacing:1px;
+  cursor:pointer;touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;
+}
+/* loading */
+.loading-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(24,18,13,0.5);z-index:999;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(2px);
+}
+.loading-overlay.show{display:flex;}
+.loading-box{
+  background:#fff;border:2px solid var(--ink);border-radius:12px;
+  padding:28px 36px;text-align:center;
+  font-family:'Space Mono',monospace;font-size:12px;
+  color:var(--ink);letter-spacing:2px;
+  box-shadow:4px 4px 0 var(--ink);
+}
+.spinner{
+  width:32px;height:32px;border:3px solid var(--rule);
+  border-top-color:var(--ink);border-radius:50%;
+  animation:spin 0.7s linear infinite;margin:0 auto 14px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-head">
+    <div class="brand">新買醉</div>
+    <div class="brand-sub">COZZZY BAR · STAFF LOGIN</div>
+  </div>
+  <div class="card-body">
+    <div class="login-title">輸入員工 PIN 碼</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+    <div class="numpad">
+      <button class="nk" data-k="1">1</button>
+      <button class="nk" data-k="2">2</button>
+      <button class="nk" data-k="3">3</button>
+      <button class="nk" data-k="4">4</button>
+      <button class="nk" data-k="5">5</button>
+      <button class="nk" data-k="6">6</button>
+      <button class="nk" data-k="7">7</button>
+      <button class="nk" data-k="8">8</button>
+      <button class="nk" data-k="9">9</button>
+      <button class="nk zero" data-k="0">0</button>
+      <button class="nk del" data-k="del">⌫</button>
+    </div>
+    <div class="err-msg" id="err-msg"></div>
+  </div>
+  <div class="card-foot">
+    <div class="admin-link" id="admin-link">管理員入口</div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    驗證中…
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbykRLffbcem_xIgJMw2RUPu99DPeZ76ZLlza66kajhL2YXCVqXPCHTQJ08Ki6D43ekVYg/exec';
+
+let buf = '';
+
+// 已登入則直接跳轉
+if(sessionStorage.getItem('staff_name')) location.href='report.html';
+
+document.querySelectorAll('.nk').forEach(k=>{
+  k.addEventListener('click',()=>{
+    const v=k.dataset.k;
+    if(v==='del'){ buf=buf.slice(0,-1); render(); return; }
+    if(buf.length>=4) return;
+    buf+=v; render();
+    if(buf.length===4) verify();
+  });
+});
+
+function render(){
+  const dots=document.querySelectorAll('.pin-dot');
+  dots.forEach((d,i)=>{ d.classList.remove('error'); d.classList.toggle('filled',i<buf.length); });
+  document.getElementById('err-msg').textContent='';
+}
+
+async function verify(){
+  document.getElementById('loading').classList.add('show');
+  try{
+    const url=`${GAS_URL}?action=login&pin=${buf}`;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.ok){
+      sessionStorage.setItem('staff_name', data.name);
+      sessionStorage.setItem('staff_pin', buf);
+      location.href='report.html';
+    } else {
+      showError(data.msg||'PIN 碼錯誤');
+    }
+  }catch(e){
+    showError('連線失敗，請重試');
+  }finally{
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+
+function showError(msg){
+  buf='';
+  document.querySelectorAll('.pin-dot').forEach(d=>{ d.classList.remove('filled'); d.classList.add('error'); });
+  document.getElementById('err-msg').textContent=msg;
+  setTimeout(()=>{ document.querySelectorAll('.pin-dot').forEach(d=>d.classList.remove('error')); },800);
+}
+
+// Admin 入口（長按）
+let holdT=null;
+const al=document.getElementById('admin-link');
+al.addEventListener('touchstart',()=>{ holdT=setTimeout(()=>location.href='admin.html',1500); },{passive:true});
+al.addEventListener('touchend',()=>clearTimeout(holdT),{passive:true});
+al.addEventListener('mousedown',()=>{ holdT=setTimeout(()=>location.href='admin.html',1500); });
+al.addEventListener('mouseup',()=>clearTimeout(holdT));
+</script>
+</body>
+</html>
