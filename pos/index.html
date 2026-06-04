@@ -143,7 +143,7 @@
     font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
-    background: rgba(0,0,0,0.2);
+    background: transparent;
     height: 48px;
     line-height: 48px;
   }
@@ -175,12 +175,12 @@
     border-bottom: 2px solid var(--border-active);
     border-radius: 0;
     color: var(--accent-em);
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 700;
     font-family: 'Noto Sans TC', sans-serif;
     text-align: center;
-    width: 160px;
-    padding: 2px 6px;
+    width: 120px;
+    padding: 2px 4px;
     outline: none;
     -moz-appearance: textfield;
   }
@@ -189,7 +189,7 @@
   #amountInput:focus { border-bottom-color: var(--accent-em); }
   .quick-btns {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-top: 8px;
   }
@@ -216,7 +216,7 @@
     background: rgba(224,82,82,0.12);
     border-color: rgba(224,82,82,0.3);
     color: var(--danger);
-    grid-column: span 4;
+    grid-column: span 3;
     height: 40px;
     font-size: 13px;
   }
@@ -665,6 +665,7 @@
 let currentAmount   = 0;
 let currentQty      = 1;
 let currentTime     = 0;
+let amountHistory   = [];   // 紀錄每次加值前的金額，供倒退
 let waivedService   = false;
 let waivedCleaning  = false;
 
@@ -746,12 +747,14 @@ function onAmountInput() {
   recalc();
 }
 function addAmount(v) {
+  amountHistory.push(currentAmount);   // 記住這次動作前的值
   currentAmount += v;
   document.getElementById('amountInput').value = currentAmount;
   recalc();
 }
 function backspaceAmount() {
-  currentAmount = Math.floor(currentAmount / 10);
+  if (amountHistory.length === 0) return;
+  currentAmount = amountHistory.pop();  // 還原上一步
   document.getElementById('amountInput').value = currentAmount;
   recalc();
 }
@@ -848,6 +851,7 @@ function resetForm() {
   currentAmount  = 0;
   currentQty     = 1;
   currentTime    = 0;
+  amountHistory  = [];
   waivedService  = false;
   waivedCleaning = false;
 
