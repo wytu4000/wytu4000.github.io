@@ -157,6 +157,36 @@
     padding: 8px 0;
     letter-spacing: 1px;
   }
+  .amount-input-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .amount-prefix {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent-em);
+  }
+  #amountInput {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--border-active);
+    border-radius: 0;
+    color: var(--accent-em);
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'Noto Sans TC', sans-serif;
+    text-align: center;
+    width: 160px;
+    padding: 2px 6px;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  #amountInput::-webkit-inner-spin-button,
+  #amountInput::-webkit-outer-spin-button { -webkit-appearance: none; }
+  #amountInput:focus { border-bottom-color: var(--accent-em); }
   .quick-btns {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -518,9 +548,11 @@
   <!-- 金額 -->
   <div class="card">
     <div class="card-title">金額</div>
-    <div class="amount-display">$ <span id="amountDisplay">0</span></div>
+    <div class="amount-input-wrap">
+      <span class="amount-prefix">$</span>
+      <input type="number" id="amountInput" value="0" min="0" oninput="onAmountInput()">
+    </div>
     <div class="quick-btns">
-      <button class="quick-btn" onclick="addAmount(50)">+50</button>
       <button class="quick-btn" onclick="addAmount(100)">+100</button>
       <button class="quick-btn" onclick="addAmount(500)">+500</button>
       <button class="quick-btn" onclick="addAmount(1000)">+1000</button>
@@ -709,14 +741,18 @@ function changeQty(delta) {
 }
 
 // ── 金額 ──────────────────────────────────────────
+function onAmountInput() {
+  currentAmount = parseInt(document.getElementById('amountInput').value) || 0;
+  recalc();
+}
 function addAmount(v) {
   currentAmount += v;
-  document.getElementById('amountDisplay').textContent = currentAmount;
+  document.getElementById('amountInput').value = currentAmount;
   recalc();
 }
 function backspaceAmount() {
   currentAmount = Math.floor(currentAmount / 10);
-  document.getElementById('amountDisplay').textContent = currentAmount;
+  document.getElementById('amountInput').value = currentAmount;
   recalc();
 }
 function addTime(v) {
@@ -729,7 +765,7 @@ function backspaceTime() {
 }
 function clearAmount() {
   currentAmount = 0;
-  document.getElementById('amountDisplay').textContent = 0;
+  document.getElementById('amountInput').value = 0;
   recalc();
 }
 function recalc() {
@@ -816,8 +852,8 @@ function resetForm() {
   waivedCleaning = false;
 
   document.getElementById('qtyDisplay').textContent    = 1;
-  document.getElementById('timeDisplay').textContent   = 0;
-  document.getElementById('amountDisplay').textContent = 0;
+  document.getElementById('timeDisplay').textContent = 0;
+  document.getElementById('amountInput').value        = 0;
   document.getElementById('otherFee').value            = 0;
   document.getElementById('orderNote').value           = '';
   document.getElementById('staffSelect').selectedIndex = 0;
