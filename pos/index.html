@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
 <title>POS 收單系統</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
     --success:       #5cad6e;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
   body {
     font-family: 'Noto Sans TC', sans-serif;
@@ -163,6 +163,12 @@
     gap: 8px;
     margin-top: 8px;
   }
+  .back-btn {
+    background: rgba(180,79,255,0.12);
+    border-color: rgba(180,79,255,0.35);
+    color: #b44fff;
+  }
+  .back-btn:active { background: rgba(180,79,255,0.28); }
   .quick-btn {
     background: rgba(224,123,42,0.12);
     border: 1px solid var(--border-color);
@@ -472,32 +478,56 @@
         <option value="">載入中…</option>
       </select>
     </div>
+    <!-- 品項 + 數量 同行 -->
     <div class="form-row">
-      <label>🍻 品項</label>
-      <select id="itemSelect">
-        <option value="">載入中…</option>
-      </select>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1">
+          <label>🍻 品項</label>
+          <select id="itemSelect">
+            <option value="">載入中…</option>
+          </select>
+        </div>
+        <div style="flex:0 0 auto">
+          <label>🔢 數量</label>
+          <div class="qty-control" style="width:120px">
+            <button class="qty-btn" onclick="changeQty(-1)">−</button>
+            <div class="qty-display" id="qtyDisplay">1</div>
+            <button class="qty-btn" onclick="changeQty(1)">＋</button>
+          </div>
+        </div>
+      </div>
     </div>
+    <!-- 時間 -->
     <div class="form-row">
-      <label>🔢 數量</label>
-      <div class="qty-control">
-        <button class="qty-btn" onclick="changeQty(-1)">−</button>
-        <div class="qty-display" id="qtyDisplay">1</div>
-        <button class="qty-btn" onclick="changeQty(1)">＋</button>
+      <label>⏱ 時間</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="amount-display" style="font-size:20px;padding:0;min-width:64px;text-align:left">
+          <span id="timeDisplay">0</span> <span style="font-size:13px;color:var(--text-secondary)">h</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;flex:1">
+          <button class="quick-btn" style="height:40px;font-size:13px" onclick="addTime(0.5)">+0.5</button>
+          <button class="quick-btn" style="height:40px;font-size:13px" onclick="addTime(1)">+1</button>
+          <button class="quick-btn" style="height:40px;font-size:13px" onclick="addTime(2)">+2</button>
+          <button class="quick-btn" style="height:40px;font-size:13px" onclick="addTime(3)">+3</button>
+          <button class="quick-btn back-btn" style="height:40px;font-size:15px" onclick="backspaceTime()">⌫</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- 消費金額 -->
+  <!-- 金額 -->
   <div class="card">
-    <div class="card-title">消費金額</div>
+    <div class="card-title">金額</div>
     <div class="amount-display">$ <span id="amountDisplay">0</span></div>
     <div class="quick-btns">
       <button class="quick-btn" onclick="addAmount(50)">+50</button>
       <button class="quick-btn" onclick="addAmount(100)">+100</button>
       <button class="quick-btn" onclick="addAmount(500)">+500</button>
       <button class="quick-btn" onclick="addAmount(1000)">+1000</button>
-      <button class="quick-btn clear-btn" onclick="clearAmount()">清除金額</button>
+      <button class="quick-btn" onclick="addAmount(5000)">+5000</button>
+      <button class="quick-btn" onclick="addAmount(10000)">+10000</button>
+      <button class="quick-btn back-btn" onclick="backspaceAmount()">⌫</button>
+      <button class="quick-btn clear-btn" onclick="clearAmount()">清除</button>
     </div>
   </div>
 
@@ -505,7 +535,7 @@
   <div class="card">
     <div class="card-title">費用明細</div>
     <div class="fee-row">
-      <div class="fee-label">消費金額</div>
+      <div class="fee-label">金額</div>
       <div class="fee-value">$ <span id="feeAmount">0</span></div>
     </div>
     <div class="fee-row">
@@ -602,8 +632,17 @@
 // ── 狀態 ──────────────────────────────────────
 let currentAmount   = 0;
 let currentQty      = 1;
+let currentTime     = 0;
 let waivedService   = false;
 let waivedCleaning  = false;
+
+// ── 防雙擊放大 ──────────────────────────────────
+let lastTap = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
 
 // ── 初始化 ──────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -675,6 +714,19 @@ function addAmount(v) {
   document.getElementById('amountDisplay').textContent = currentAmount;
   recalc();
 }
+function backspaceAmount() {
+  currentAmount = Math.floor(currentAmount / 10);
+  document.getElementById('amountDisplay').textContent = currentAmount;
+  recalc();
+}
+function addTime(v) {
+  currentTime = Math.round((currentTime + v) * 10) / 10;
+  document.getElementById('timeDisplay').textContent = currentTime;
+}
+function backspaceTime() {
+  currentTime = Math.max(0, Math.round((currentTime - 0.5) * 10) / 10);
+  document.getElementById('timeDisplay').textContent = currentTime;
+}
 function clearAmount() {
   currentAmount = 0;
   document.getElementById('amountDisplay').textContent = 0;
@@ -730,8 +782,8 @@ async function submitOrder() {
   const total    = currentAmount + service + cleaning + other;
   const note     = document.getElementById('orderNote').value;
 
-  const payload = { date, staff, item, qty: currentQty, amount: currentAmount,
-                    service, cleaning, other, total, note };
+  const payload = { date, staff, item, qty: currentQty, time: currentTime,
+                    amount: currentAmount, service, cleaning, other, total, note };
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -759,10 +811,12 @@ async function submitOrder() {
 function resetForm() {
   currentAmount  = 0;
   currentQty     = 1;
+  currentTime    = 0;
   waivedService  = false;
   waivedCleaning = false;
 
   document.getElementById('qtyDisplay').textContent    = 1;
+  document.getElementById('timeDisplay').textContent   = 0;
   document.getElementById('amountDisplay').textContent = 0;
   document.getElementById('otherFee').value            = 0;
   document.getElementById('orderNote').value           = '';
