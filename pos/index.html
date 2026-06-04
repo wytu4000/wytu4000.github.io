@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>POS 收單系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── 色票變數 ── */
+  :root {
+    --bg-primary:    #1a1209;
+    --bg-secondary:  #241a0e;
+    --bg-card:       rgba(255,255,255,0.05);
+    --accent-main:   #e07b2a;
+    --accent-sub:    #c4956a;
+    --accent-em:     #f5a623;
+    --text-primary:  #f2e8d9;
+    --text-secondary:#a08060;
+    --border-color:  rgba(224,123,42,0.3);
+    --border-active: rgba(224,123,42,0.8);
+    --danger:        #e05252;
+    --success:       #5cad6e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding-bottom: 70px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* ── 頂部標題 ── */
+  .top-bar {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px 16px 12px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .top-bar h1 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--accent-em);
+    letter-spacing: 1px;
+  }
+  .top-bar .subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* ── 頁籤內容 ── */
+  .tab-content { display: none; padding: 14px 14px 0; }
+  .tab-content.active { display: block; }
+
+  /* ── 卡片 ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  /* ── 表單元素 ── */
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  input[type="text"], input[type="date"], input[type="number"], select, textarea {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    color: var(--text-primary);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px;
+    padding: 10px 12px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus, input[type="date"]:focus,
+  input[type="number"]:focus, select:focus, textarea:focus {
+    border-color: var(--border-active);
+  }
+  input[readonly] {
+    opacity: 0.7;
+    cursor: default;
+  }
+  textarea { resize: none; height: 72px; }
+  select option { background: #2a1e10; color: var(--text-primary); }
+
+  .form-row { margin-bottom: 12px; }
+
+  /* ── 數量控制 ── */
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .qty-btn {
+    background: rgba(224,123,42,0.15);
+    color: var(--accent-main);
+    border: none;
+    font-size: 22px;
+    width: 52px;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .qty-btn:active { background: rgba(224,123,42,0.35); }
+  .qty-display {
+    flex: 1;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: rgba(0,0,0,0.2);
+    height: 48px;
+    line-height: 48px;
+  }
+
+  /* ── 金額快速按鈕 ── */
+  .amount-display {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent-em);
+    text-align: center;
+    padding: 8px 0;
+    letter-spacing: 1px;
+  }
+  .quick-btns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .quick-btn {
+    background: rgba(224,123,42,0.12);
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    color: var(--accent-sub);
+    font-size: 14px;
+    font-weight: 600;
+    height: 44px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+  .quick-btn:active { background: rgba(224,123,42,0.3); color: var(--accent-em); }
+  .clear-btn {
+    background: rgba(224,82,82,0.12);
+    border-color: rgba(224,82,82,0.3);
+    color: var(--danger);
+    grid-column: span 4;
+    height: 40px;
+    font-size: 13px;
+  }
+  .clear-btn:active { background: rgba(224,82,82,0.25); }
+
+  /* ── 費用列 ── */
+  .fee-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .fee-row:last-child { border-bottom: none; }
+  .fee-label { font-size: 13px; color: var(--text-secondary); }
+  .fee-value { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .fee-value.total-val { font-size: 20px; color: var(--accent-em); }
+
+  /* ── 免除按鈕 ── */
+  .waive-btn {
+    font-size: 11px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid rgba(224,82,82,0.45);
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .waive-btn.waived {
+    background: rgba(92,173,110,0.18);
+    border-color: rgba(92,173,110,0.55);
+    color: var(--success);
+  }
+  .fee-row-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fee-strikethrough { text-decoration: line-through; opacity: 0.45; }
+
+  /* ── 送出按鈕 ── */
+  .submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent-main), var(--accent-em));
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    height: 52px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Sans TC', sans-serif;
+    cursor: pointer;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    transition: opacity 0.2s;
+  }
+  .submit-btn:active { opacity: 0.8; }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Toast 提示 ── */
+  #toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 200;
+    white-space: nowrap;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #toast.success { border-color: rgba(92,173,110,0.6); color: var(--success); }
+  #toast.error   { border-color: rgba(224,82,82,0.6);  color: var(--danger); }
+
+  /* ── 報表 ── */
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .report-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .refresh-btn {
+    background: rgba(224,123,42,0.15);
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    color: var(--accent-sub);
+    font-size: 13px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+
+  .order-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .order-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .order-item { font-size: 16px; font-weight: 600; color: var(--accent-em); }
+  .order-total { font-size: 16px; font-weight: 700; color: var(--accent-main); }
+  .order-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .order-fees {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .order-fees span { color: var(--text-primary); }
+  .order-note { font-size: 12px; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
+
+  .totals-card {
+    background: rgba(224,123,42,0.1);
+    border: 1px solid rgba(224,123,42,0.4);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 8px;
+  }
+  .totals-title { font-size: 13px; color: var(--accent-sub); margin-bottom: 6px; font-weight: 600; }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .totals-row:last-child { border-bottom: none; font-size: 17px; font-weight: 700; color: var(--accent-em); }
+  .totals-row .lbl { color: var(--text-secondary); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  /* ── 歷史查詢 ── */
+  .query-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 12px;
+  }
+  .query-row > div { flex: 1; }
+  .query-btn {
+    background: var(--accent-main);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    height: 48px;
+    width: 76px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    flex-shrink: 0;
+  }
+
+  /* ── 底部導覽 ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    height: 62px;
+    z-index: 100;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: color 0.2s;
+    padding: 6px 0;
+  }
+  .nav-item svg { width: 22px; height: 22px; transition: stroke 0.2s; }
+  .nav-item.active { color: var(--accent-main); }
+  .nav-item.active svg { stroke: var(--accent-main); }
+
+  /* ── 載入中 ── */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 30px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(224,123,42,0.2);
+    border-top-color: var(--accent-main);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 其他費用輸入 ── */
+  .other-input-wrap { position: relative; }
+  .other-input-wrap::before {
+    content: '$';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 15px;
+    pointer-events: none;
+  }
+  .other-input-wrap input { padding-left: 24px; }
+
+  /* ── 設定頁面 ── */
+  .gas-url-notice {
+    background: rgba(245,166,35,0.1);
+    border: 1px solid rgba(245,166,35,0.4);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--accent-em);
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ──── GAS Web App URL（部署後填入） ──── -->
+<script>
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxauO0JT0mGxmm_XF5CIsVjPFmAJgU_EOFSEwebcFXF8_GYGvyAuT6Ksmk1ISuMRaR4Kw/exec";
+</script>
+
+<!-- 頂部標題 -->
+<div class="top-bar">
+  <h1>🍺 包廂 POS</h1>
+  <div class="subtitle" id="topDate"></div>
+</div>
+
+<!-- ════════════════ 收單頁籤 ════════════════ -->
+<div id="tab-order" class="tab-content active">
+
+  <!-- GAS URL 未設定警示 -->
+  <div class="gas-url-notice" id="urlNotice" style="display:none">
+    ⚠️ 尚未設定 GAS_URL，請在 index.html 填入部署網址後重新開啟。
+  </div>
+
+  <!-- 日期 & 人員 -->
+  <div class="card">
+    <div class="form-row">
+      <label>📅 日期</label>
+      <input type="date" id="orderDate">
+    </div>
+    <div class="form-row">
+      <label>👤 操作人員</label>
+      <select id="staffSelect">
+        <option value="">載入中…</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>🍻 品項</label>
+      <select id="itemSelect">
+        <option value="">載入中…</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>🔢 數量</label>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <div class="qty-display" id="qtyDisplay">1</div>
+        <button class="qty-btn" onclick="changeQty(1)">＋</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 消費金額 -->
+  <div class="card">
+    <div class="card-title">消費金額</div>
+    <div class="amount-display">$ <span id="amountDisplay">0</span></div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="addAmount(50)">+50</button>
+      <button class="quick-btn" onclick="addAmount(100)">+100</button>
+      <button class="quick-btn" onclick="addAmount(500)">+500</button>
+      <button class="quick-btn" onclick="addAmount(1000)">+1000</button>
+      <button class="quick-btn clear-btn" onclick="clearAmount()">清除金額</button>
+    </div>
+  </div>
+
+  <!-- 費用明細 -->
+  <div class="card">
+    <div class="card-title">費用明細</div>
+    <div class="fee-row">
+      <div class="fee-label">消費金額</div>
+      <div class="fee-value">$ <span id="feeAmount">0</span></div>
+    </div>
+    <div class="fee-row">
+      <div class="fee-row-inner">
+        <div class="fee-label" id="lblService">服務費 (10%)</div>
+        <button class="waive-btn" id="waiveServiceBtn" onclick="toggleWaive('service')">免除</button>
+      </div>
+      <div class="fee-value">$ <span id="feeService">0</span></div>
+    </div>
+    <div class="fee-row">
+      <div class="fee-row-inner">
+        <div class="fee-label" id="lblCleaning">清潔費 (5%)</div>
+        <button class="waive-btn" id="waiveCleaningBtn" onclick="toggleWaive('cleaning')">免除</button>
+      </div>
+      <div class="fee-value">$ <span id="feeCleaning">0</span></div>
+    </div>
+    <div class="fee-row">
+      <div class="fee-label">其他費用</div>
+      <div class="fee-value">
+        <div class="other-input-wrap">
+          <input type="number" id="otherFee" value="0" min="0" style="width:120px;text-align:right"
+                 oninput="recalc()">
+        </div>
+      </div>
+    </div>
+    <div class="fee-row" style="border-top:1px solid var(--border-color);margin-top:6px;padding-top:10px">
+      <div class="fee-label" style="font-weight:700;color:var(--text-primary)">總計</div>
+      <div class="fee-value total-val">$ <span id="feeTotal">0</span></div>
+    </div>
+  </div>
+
+  <!-- 備註 -->
+  <div class="card">
+    <div class="form-row">
+      <label>📝 備註</label>
+      <textarea id="orderNote" placeholder="選填…"></textarea>
+    </div>
+  </div>
+
+  <!-- 送出 -->
+  <button class="submit-btn" id="submitBtn" onclick="submitOrder()">送出訂單</button>
+</div>
+
+<!-- ════════════════ 今日報表頁籤 ════════════════ -->
+<div id="tab-today" class="tab-content">
+  <div class="report-header">
+    <div class="report-title" id="todayReportTitle">今日報表</div>
+    <button class="refresh-btn" onclick="loadToday()">重新整理</button>
+  </div>
+  <div id="todayList"><div class="loading"><div class="spinner"></div>載入中…</div></div>
+</div>
+
+<!-- ════════════════ 歷史查詢頁籤 ════════════════ -->
+<div id="tab-history" class="tab-content">
+  <div class="query-row">
+    <div>
+      <label>選擇日期</label>
+      <input type="date" id="historyDate">
+    </div>
+    <button class="query-btn" onclick="loadHistory()">查詢</button>
+  </div>
+  <div id="historyList"><div class="empty-state">選擇日期後按查詢</div></div>
+</div>
+
+<!-- 底部導覽 -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-order" onclick="switchTab('order')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+    </svg>
+    收單
+  </button>
+  <button class="nav-item" id="nav-today" onclick="switchTab('today')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    今日
+  </button>
+  <button class="nav-item" id="nav-history" onclick="switchTab('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    歷史
+  </button>
+</nav>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── 狀態 ──────────────────────────────────────
+let currentAmount   = 0;
+let currentQty      = 1;
+let waivedService   = false;
+let waivedCleaning  = false;
+
+// ── 初始化 ──────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // 今天日期
+  const today = getTodayStr();
+  document.getElementById('orderDate').value   = today;
+  document.getElementById('historyDate').value = today;
+  document.getElementById('topDate').textContent = formatDateDisplay(today);
+
+  // GAS URL 檢查
+  if (!GAS_URL || GAS_URL.startsWith('請')) {
+    document.getElementById('urlNotice').style.display = 'block';
+    document.getElementById('submitBtn').disabled = true;
+    return;
+  }
+
+  loadInit();
+});
+
+function getTodayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function formatDateDisplay(str) {
+  if (!str) return '';
+  const [y,m,d] = str.split('-');
+  return `${y} 年 ${m} 月 ${d} 日`;
+}
+
+// ── 載入品項 & 人員 ──────────────────────────────
+async function loadInit() {
+  try {
+    const res  = await fetch(`${GAS_URL}?action=init`, { method:'GET' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    const staffSel = document.getElementById('staffSelect');
+    const itemSel  = document.getElementById('itemSelect');
+    staffSel.innerHTML = '<option value="">請選擇人員</option>';
+    itemSel.innerHTML  = '<option value="">請選擇品項</option>';
+
+    (data.staff || []).forEach(s => {
+      const o = document.createElement('option');
+      o.value = o.textContent = s;
+      staffSel.appendChild(o);
+    });
+    (data.items || []).forEach(i => {
+      const o = document.createElement('option');
+      o.value = o.textContent = i;
+      itemSel.appendChild(o);
+    });
+  } catch(e) {
+    showToast('載入清單失敗：' + e.message, 'error');
+  }
+}
+
+// ── 數量 ──────────────────────────────────────────
+function changeQty(delta) {
+  currentQty = Math.max(1, currentQty + delta);
+  document.getElementById('qtyDisplay').textContent = currentQty;
+}
+
+// ── 金額 ──────────────────────────────────────────
+function addAmount(v) {
+  currentAmount += v;
+  document.getElementById('amountDisplay').textContent = currentAmount;
+  recalc();
+}
+function clearAmount() {
+  currentAmount = 0;
+  document.getElementById('amountDisplay').textContent = 0;
+  recalc();
+}
+function recalc() {
+  const rawService  = Math.round(currentAmount * 0.1);
+  const rawCleaning = Math.round(currentAmount * 0.05);
+  const service     = waivedService  ? 0 : rawService;
+  const cleaning    = waivedCleaning ? 0 : rawCleaning;
+  const other       = parseInt(document.getElementById('otherFee').value) || 0;
+  const total       = currentAmount + service + cleaning + other;
+
+  document.getElementById('feeAmount').textContent   = currentAmount;
+  document.getElementById('feeService').textContent  = service;
+  document.getElementById('feeCleaning').textContent = cleaning;
+  document.getElementById('feeTotal').textContent    = total;
+}
+
+function toggleWaive(type) {
+  if (type === 'service') {
+    waivedService = !waivedService;
+    const btn = document.getElementById('waiveServiceBtn');
+    const lbl = document.getElementById('lblService');
+    btn.classList.toggle('waived', waivedService);
+    btn.textContent = waivedService ? '✓ 已免除' : '免除';
+    lbl.classList.toggle('fee-strikethrough', waivedService);
+  } else {
+    waivedCleaning = !waivedCleaning;
+    const btn = document.getElementById('waiveCleaningBtn');
+    const lbl = document.getElementById('lblCleaning');
+    btn.classList.toggle('waived', waivedCleaning);
+    btn.textContent = waivedCleaning ? '✓ 已免除' : '免除';
+    lbl.classList.toggle('fee-strikethrough', waivedCleaning);
+  }
+  recalc();
+}
+
+// ── 送出訂單 ──────────────────────────────────────
+async function submitOrder() {
+  const date  = document.getElementById('orderDate').value;
+  const staff = document.getElementById('staffSelect').value;
+  const item  = document.getElementById('itemSelect').value;
+
+  if (!date)  { showToast('請填入日期', 'error'); return; }
+  if (!staff) { showToast('請選擇操作人員', 'error'); return; }
+  if (!item)  { showToast('請選擇品項', 'error'); return; }
+  if (currentAmount === 0) { showToast('消費金額不能為 0', 'error'); return; }
+
+  const service  = Math.round(currentAmount * 0.1);
+  const cleaning = Math.round(currentAmount * 0.05);
+  const other    = parseInt(document.getElementById('otherFee').value) || 0;
+  const total    = currentAmount + service + cleaning + other;
+  const note     = document.getElementById('orderNote').value;
+
+  const payload = { date, staff, item, qty: currentQty, amount: currentAmount,
+                    service, cleaning, other, total, note };
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中…';
+
+  try {
+    const res  = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    showToast('✓ 訂單送出成功', 'success');
+    resetForm();
+  } catch(e) {
+    showToast('送出失敗：' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '送出訂單';
+  }
+}
+
+function resetForm() {
+  currentAmount  = 0;
+  currentQty     = 1;
+  waivedService  = false;
+  waivedCleaning = false;
+
+  document.getElementById('qtyDisplay').textContent    = 1;
+  document.getElementById('amountDisplay').textContent = 0;
+  document.getElementById('otherFee').value            = 0;
+  document.getElementById('orderNote').value           = '';
+  document.getElementById('staffSelect').selectedIndex = 0;
+  document.getElementById('itemSelect').selectedIndex  = 0;
+
+  // 重置免除按鈕外觀
+  ['waiveServiceBtn','waiveCleaningBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.classList.remove('waived');
+    btn.textContent = '免除';
+  });
+  document.getElementById('lblService').classList.remove('fee-strikethrough');
+  document.getElementById('lblCleaning').classList.remove('fee-strikethrough');
+
+  recalc();
+}
+
+// ── 頁籤切換 ──────────────────────────────────────
+function switchTab(tab) {
+  ['order','today','history'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('nav-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab === 'today')   loadToday();
+  if (tab === 'history') {
+    const d = document.getElementById('historyDate').value;
+    if (d) loadHistory();
+  }
+}
+
+// ── 今日報表 ──────────────────────────────────────
+async function loadToday() {
+  const today = getTodayStr();
+  document.getElementById('todayReportTitle').textContent = formatDateDisplay(today) + ' 報表';
+  renderOrderList('todayList', today);
+}
+
+// ── 歷史查詢 ──────────────────────────────────────
+async function loadHistory() {
+  const date = document.getElementById('historyDate').value;
+  if (!date) { showToast('請選擇日期', 'error'); return; }
+  renderOrderList('historyList', date);
+}
+
+// ── 通用訂單列表渲染 ────────────────────────────────
+async function renderOrderList(containerId, date) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>載入中…</div>';
+
+  try {
+    const res  = await fetch(`${GAS_URL}?action=orders&date=${date}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    if (!data.orders || data.orders.length === 0) {
+      container.innerHTML = `<div class="empty-state">📭 ${formatDateDisplay(date)} 無訂單記錄</div>`;
+      return;
+    }
+
+    let html = '';
+    data.orders.forEach(o => {
+      html += `
+      <div class="order-card">
+        <div class="order-top">
+          <div class="order-item">${esc(o.item)} × ${o.qty}</div>
+          <div class="order-total">$ ${fmt(o.total)}</div>
+        </div>
+        <div class="order-meta">👤 ${esc(o.staff)} &nbsp;|&nbsp; 📅 ${esc(o.date)}</div>
+        <div class="order-fees">
+          消費 <span>$${fmt(o.amount)}</span>
+          服務 <span>$${fmt(o.service)}</span>
+          清潔 <span>$${fmt(o.cleaning)}</span>
+          ${Number(o.other)>0 ? `其他 <span>$${fmt(o.other)}</span>` : ''}
+        </div>
+        ${o.note ? `<div class="order-note">備註：${esc(o.note)}</div>` : ''}
+      </div>`;
+    });
+
+    const t = data.totals;
+    html += `
+    <div class="totals-card">
+      <div class="totals-title">當日加總 (${data.orders.length} 筆)</div>
+      <div class="totals-row"><span class="lbl">消費金額</span><span>$ ${fmt(t.amount)}</span></div>
+      <div class="totals-row"><span class="lbl">服務費</span><span>$ ${fmt(t.service)}</span></div>
+      <div class="totals-row"><span class="lbl">清潔費</span><span>$ ${fmt(t.cleaning)}</span></div>
+      ${t.other>0 ? `<div class="totals-row"><span class="lbl">其他</span><span>$ ${fmt(t.other)}</span></div>` : ''}
+      <div class="totals-row"><span class="lbl">總計</span><span>$ ${fmt(t.total)}</span></div>
+    </div>`;
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = `<div class="empty-state" style="color:var(--danger)">載入失敗：${e.message}</div>`;
+  }
+}
+
+// ── 工具函式 ──────────────────────────────────────
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent  = msg;
+  t.className    = 'show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = ''; }, 2800);
+}
+function fmt(n) { return Number(n).toLocaleString('zh-TW'); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
